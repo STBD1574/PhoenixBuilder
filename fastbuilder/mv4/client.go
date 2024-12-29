@@ -90,9 +90,9 @@ func assertAndParse[T any](resp *http.Response) (T, error) {
 }
 
 func CreateClient(options *ClientOptions) (*Client, error) {
-	if options.AuthServer != "https://user.fastbuilder.pro" {
-		return nil, errors.New("Failed to contact with API")
-	}
+	// if options.AuthServer != "https://user.fastbuilder.pro" {
+	// 	return nil, errors.New("Failed to contact with API")
+	// }
 	secret_res, err := http.Get(fmt.Sprintf("%s/api/new", options.AuthServer))
 	if err != nil {
 		return nil, errors.New("Failed to contact with API")
