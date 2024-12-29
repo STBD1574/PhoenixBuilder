@@ -22,15 +22,10 @@ package builder
 import (
 	_ "embed"
 	"fmt"
-	"image"
-	"os"
-	I18n "phoenixbuilder/fastbuilder/i18n"
 	"phoenixbuilder/fastbuilder/types"
-
-	"github.com/disintegration/imaging"
-	"github.com/lucasb-eyer/go-colorful"
 )
 
+/*
 const (
 	Height2D = iota
 	Height3D_Light
@@ -225,89 +220,93 @@ func GetYMap(blocks [][]*colorBlock, MapY int) [][]int {
 
 	return YMap
 }
+*/
 
 func MapArt(config *types.MainConfig, blc chan *types.Module) error {
-	//path := config.Path
-	MapX := config.MapX
-	MapZ := config.MapZ
-	MapY := config.MapY
-	if MapY != 0 {
-		if MapY < 20 || MapY > 255 {
-			return fmt.Errorf(I18n.T(I18n.Error_MapY_Exceed), MapY)
-		}
+	return fmt.Errorf("MapArt: This feature has been removed since 7.5.1 version")
+	/*
+		//path := config.Path
+		MapX := config.MapX
+		MapZ := config.MapZ
+		MapY := config.MapY
+		if MapY != 0 {
+			if MapY < 20 || MapY > 255 {
+				return fmt.Errorf(I18n.T(I18n.Error_MapY_Exceed), MapY)
+			}
 
-	}
-	pos := config.Position
-	file, err := os.Open(config.Path)
-	img, err := imaging.Decode(file)
-	if err != nil {
-		return I18n.ProcessSystemFileError(err)
-	}
-	origBounds := img.Bounds()
-	origSize := origBounds.Max
-	origRaito := float64(origSize.X) / float64(origSize.Y)
-	targetRaito := float64(MapX) / float64(MapZ)
-	if origRaito > targetRaito {
-		lX := int(float64(origSize.Y) * targetRaito)
-		sX := (origSize.X - lX) / 2
-		eX := sX + lX
-		if sX < 0 {
-			sX = 0
 		}
-		if eX > origSize.X {
-			eX = origSize.X
+		pos := config.Position
+		file, err := os.Open(config.Path)
+		img, err := imaging.Decode(file)
+		if err != nil {
+			return I18n.ProcessSystemFileError(err)
 		}
-		img = imaging.Crop(img, image.Rect(sX, 0, eX, origSize.Y))
-	} else if origRaito < targetRaito {
-		lY := int(float64(origSize.X) / targetRaito)
-		sY := (origSize.Y - lY) / 2
-		eY := sY + lY
-		if sY < 0 {
-			sY = 0
+		origBounds := img.Bounds()
+		origSize := origBounds.Max
+		origRaito := float64(origSize.X) / float64(origSize.Y)
+		targetRaito := float64(MapX) / float64(MapZ)
+		if origRaito > targetRaito {
+			lX := int(float64(origSize.Y) * targetRaito)
+			sX := (origSize.X - lX) / 2
+			eX := sX + lX
+			if sX < 0 {
+				sX = 0
+			}
+			if eX > origSize.X {
+				eX = origSize.X
+			}
+			img = imaging.Crop(img, image.Rect(sX, 0, eX, origSize.Y))
+		} else if origRaito < targetRaito {
+			lY := int(float64(origSize.X) / targetRaito)
+			sY := (origSize.Y - lY) / 2
+			eY := sY + lY
+			if sY < 0 {
+				sY = 0
+			}
+			if eY > origSize.Y {
+				eY = origSize.Y
+			}
+			img = imaging.Crop(img, image.Rect(0, sY, origSize.X, eY))
 		}
-		if eY > origSize.Y {
-			eY = origSize.Y
-		}
-		img = imaging.Crop(img, image.Rect(0, sY, origSize.X, eY))
-	}
-	img = imaging.Resize(img, MapX*128, MapZ*128, imaging.Lanczos)
+		img = imaging.Resize(img, MapX*128, MapZ*128, imaging.Lanczos)
 
-	if MapY == 0 {
-		_, blockImg := Dither(img, &colorArray2D, &blockArray2D)
-		for Z, row := range blockImg {
-			for X, blk := range row {
-				blc <- &types.Module{
-					Point: types.Position{
-						X: X + pos.X,
-						Y: pos.Y,
-						Z: Z + pos.Z,
-					},
-					Block: &types.Block{
-						Name: &blk.Name,
-						Data: uint16(blk.Meta),
-					},
+		if MapY == 0 {
+			_, blockImg := Dither(img, &colorArray2D, &blockArray2D)
+			for Z, row := range blockImg {
+				for X, blk := range row {
+					blc <- &types.Module{
+						Point: types.Position{
+							X: X + pos.X,
+							Y: pos.Y,
+							Z: Z + pos.Z,
+						},
+						Block: &types.Block{
+							Name: &blk.Name,
+							Data: uint16(blk.Meta),
+						},
+					}
+				}
+			}
+		} else {
+			_, blockImg := Dither(img, &colorArray3D, &blockArray3D)
+			YMap := GetYMap(blockImg, MapY)
+			for Z, row := range blockImg {
+				for X, blk := range row {
+					blc <- &types.Module{
+						Point: types.Position{
+							X: X + pos.X,
+							Y: pos.Y + YMap[Z][X],
+							Z: Z + pos.Z,
+						},
+						Block: &types.Block{
+							Name: &blk.Name,
+							Data: uint16(blk.Meta),
+						},
+					}
 				}
 			}
 		}
-	} else {
-		_, blockImg := Dither(img, &colorArray3D, &blockArray3D)
-		YMap := GetYMap(blockImg, MapY)
-		for Z, row := range blockImg {
-			for X, blk := range row {
-				blc <- &types.Module{
-					Point: types.Position{
-						X: X + pos.X,
-						Y: pos.Y + YMap[Z][X],
-						Z: Z + pos.Z,
-					},
-					Block: &types.Block{
-						Name: &blk.Name,
-						Data: uint16(blk.Meta),
-					},
-				}
-			}
-		}
-	}
 
-	return nil
+		return nil
+	*/
 }
